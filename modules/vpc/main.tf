@@ -30,23 +30,12 @@ module "vpc" {
   customer_gateways     = var.customer_gateways
   customer_gateway_tags = var.customer_gateway_tags
 
-  private_subnets = local.private_subnets
-  public_subnets  = local.public_subnets
-  intra_subnets   = local.intra_subnets
-  private_subnet_tags = {
-    "kubernetes.io/cluster/${var.eks_cluster_name}" = "shared"
-    "kubernetes.io/role/internal-elb"               = "1"
-  }
-  public_subnet_tags = {
-    "kubernetes.io/cluster/${var.eks_cluster_name}" = "shared"
-    "kubernetes.io/role/elb"                        = "1"
-  }
-  intra_subnet_tags = {
-    "kubernetes.io/cluster/${var.eks_cluster_name}" = "shared"
-    "kubernetes.io/role/internal-elb"               = "1"
-  }
+  intra_subnets       = local.intra_subnets
+  private_subnets     = local.private_subnets
+  public_subnets      = local.public_subnets
+  intra_subnet_tags   = var.tags_subnet_internal
+  private_subnet_tags = var.tags_subnet_internal
+  public_subnet_tags  = var.tags_subnet_public
 
-  tags = {
-    "kubernetes.io/cluster/${var.eks_cluster_name}" = "shared"
-  }
+  tags = var.tags_vpc
 }

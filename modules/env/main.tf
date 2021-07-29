@@ -20,7 +20,17 @@ module "vpc" {
   customer_gateways      = var.customer_gateways
   customer_gateway_tags  = var.customer_gateway_tags
 
-  eks_cluster_name = local.cluster_name
+  tags_subnet_internal = {
+    "kubernetes.io/cluster/${local.cluster_name}" = "shared"
+    "kubernetes.io/role/internal-elb"             = "1"
+  }
+  tags_subnet_public = {
+    "kubernetes.io/cluster/${local.cluster_name}" = "shared"
+    "kubernetes.io/role/elb"                      = "1"
+  }
+  tags_vpc = {
+    "kubernetes.io/cluster/${local.cluster_name}" = "shared"
+  }
 }
 
 module "eks" {

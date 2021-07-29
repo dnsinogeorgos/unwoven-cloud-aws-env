@@ -30,6 +30,17 @@ variable "customer_gateway_tags" {
   type = map(string)
 }
 
-variable "eks_cluster_name" {
-  type = string
+variable "tags_subnet_internal" {
+  type    = map(string)
+  default = {}
+}
+
+variable "tags_subnet_public" {
+  type    = map(string)
+  default = {}
+}
+
+variable "tags_vpc" {
+  type    = map(string)
+  default = {}
 }
