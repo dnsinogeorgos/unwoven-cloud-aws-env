@@ -38,7 +38,6 @@ module "eks" {
 
   cluster_name    = local.cluster_name
   cluster_version = "1.21"
-  environment     = var.environment
 
   subnets = module.vpc.private_subnets
   vpc_id  = module.vpc.vpc_id
