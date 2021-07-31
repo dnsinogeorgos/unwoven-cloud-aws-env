@@ -25,10 +25,7 @@ module "efs" {
 
   name = "${var.environment}-efs"
 
-  tags = {
-    Terraform   = "true"
-    Environment = var.environment
-  }
+  tags = var.tags
 }
 
 data "aws_iam_policy_document" "efs_csi_driver" {
@@ -74,6 +71,8 @@ data "aws_iam_policy_document" "efs_csi_driver" {
 resource "aws_iam_policy" "efs_csi_driver" {
   name   = "AmazonEKS_EFS_CSI_Driver_Policy"
   policy = data.aws_iam_policy_document.efs_csi_driver.json
+
+  tags = var.tags
 }
 
 locals {
@@ -100,6 +99,8 @@ data "aws_iam_policy_document" "efs_csi_driver_role" {
 resource "aws_iam_role" "efs_csi_driver_role" {
   name               = "AmazonEKS_EFS_CSI_DriverRole"
   assume_role_policy = data.aws_iam_policy_document.efs_csi_driver_role.json
+
+  tags = var.tags
 }
 
 resource "aws_iam_role_policy_attachment" "efs_csi_driver" {

@@ -27,15 +27,18 @@ variable "one_nat_gateway_per_az" {
 }
 
 variable "amazon_side_asn" {
-  type = string
+  type    = string
+  default = "64512"
 }
 
 variable "customer_gateways" {
-  type = map(map(any))
+  type    = map(map(any))
+  default = {}
 }
 
 variable "customer_gateway_tags" {
-  type = map(string)
+  type    = map(string)
+  default = {}
 }
 
 variable "cluster_enabled_log_types" {
@@ -72,6 +75,11 @@ variable "kubeconfig_aws_authenticator_additional_args" {
 }
 
 variable "kubeconfig_aws_authenticator_env_variables" {
+  type    = map(string)
+  default = {}
+}
+
+variable "tags" {
   type    = map(string)
   default = {}
 }

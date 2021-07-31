@@ -37,5 +37,5 @@ module "vpc" {
   private_subnet_tags = var.tags_subnet_internal
   public_subnet_tags  = var.tags_subnet_public
 
-  tags = var.tags_vpc
+  tags = var.tags
 }

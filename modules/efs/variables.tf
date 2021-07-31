@@ -37,3 +37,8 @@ variable "cluster_oidc_issuer_url" {
 variable "oidc_provider_arn" {
   type = string
 }
+
+variable "tags" {
+  type    = map(string)
+  default = {}
+}

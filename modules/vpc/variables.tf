@@ -40,7 +40,7 @@ variable "tags_subnet_public" {
   default = {}
 }
 
-variable "tags_vpc" {
+variable "tags" {
   type    = map(string)
   default = {}
 }

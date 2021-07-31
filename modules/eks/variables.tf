@@ -49,3 +49,8 @@ variable "kubeconfig_aws_authenticator_additional_args" {
 variable "kubeconfig_aws_authenticator_env_variables" {
   type = map(string)
 }
+
+variable "tags" {
+  type    = map(string)
+  default = {}
+}

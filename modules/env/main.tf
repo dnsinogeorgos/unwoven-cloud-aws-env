@@ -28,9 +28,8 @@ module "vpc" {
     "kubernetes.io/cluster/${local.cluster_name}" = "shared"
     "kubernetes.io/role/elb"                      = "1"
   }
-  tags_vpc = {
-    "kubernetes.io/cluster/${local.cluster_name}" = "shared"
-  }
+
+  tags = var.tags
 }
 
 module "eks" {
@@ -49,6 +48,8 @@ module "eks" {
   map_roles                                    = var.map_roles
   kubeconfig_aws_authenticator_additional_args = var.kubeconfig_aws_authenticator_additional_args
   kubeconfig_aws_authenticator_env_variables   = var.kubeconfig_aws_authenticator_env_variables
+
+  tags = var.tags
 }
 
 module "efs" {
@@ -66,4 +67,6 @@ module "efs" {
   cluster_primary_security_group_id = module.eks.cluster_primary_security_group_id
   cluster_oidc_issuer_url           = module.eks.cluster_oidc_issuer_url
   oidc_provider_arn                 = module.eks.oidc_provider_arn
+
+  tags = var.tags
 }

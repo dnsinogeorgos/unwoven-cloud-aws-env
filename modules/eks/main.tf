@@ -2,6 +2,14 @@ resource "aws_kms_key" "eks" {
   description = "${var.cluster_name} kms secret encryption"
 }
 
+locals {
+  eks_tags = {
+    "k8s.io/cluster-autoscaler/enabled"             = "true"
+    "k8s.io/cluster-autoscaler/${var.cluster_name}" = "owned"
+  }
+  tags = merge(var.tags, local.eks_tags)
+}
+
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "17.1.0"
@@ -26,10 +34,7 @@ module "eks" {
 
   enable_irsa = true
 
-  tags = {
-    "k8s.io/cluster-autoscaler/enabled"             = "true"
-    "k8s.io/cluster-autoscaler/${var.cluster_name}" = "owned"
-  }
+  tags = local.tags
 
   node_groups_defaults = {
     disk_size = 100
@@ -107,6 +112,8 @@ resource "aws_iam_policy" "eks_node_groups" {
 
   name   = "eks_node_groups"
   policy = data.aws_iam_policy_document.eks_node_groups.0.json
+
+  tags = var.tags
 }
 
 resource "aws_iam_role_policy_attachment" "eks_node_groups" {
