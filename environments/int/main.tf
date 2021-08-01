@@ -103,20 +103,82 @@ module "eks_cluster" {
   context = module.this.context
 }
 
-module "eks_node_group" {
+module "eks_node_group_light" {
   source  = "cloudposse/eks-node-group/aws"
   version = "0.24.0"
 
+  attributes = ["light"]
+  additional_tag_map = {
+    NodeClass = "light"
+    ExtraTag  = "light"
+  }
+
+  cluster_name = module.eks_cluster.eks_cluster_id
+  subnet_ids   = module.subnets.private_subnet_ids
+
   instance_types = ["t3.small"]
-  subnet_ids     = module.subnets.private_subnet_ids
+  disk_size      = "50"
+  disk_type      = "gp3"
   desired_size   = "3"
   min_size       = "1"
   max_size       = "6"
-  cluster_name   = module.eks_cluster.eks_cluster_id
 
-  cluster_autoscaler_enabled = "true"
+  cluster_autoscaler_enabled        = true
+  worker_role_autoscale_iam_enabled = true
 
   context = module.this.context
 
   module_depends_on = module.eks_cluster.kubernetes_config_map_id
+}
+
+data "aws_iam_policy_document" "efs_csi_driver" {
+  statement {
+    effect    = "Allow"
+    resources = ["*"]
+    actions = [
+      "elasticfilesystem:DescribeAccessPoints",
+      "elasticfilesystem:DescribeFileSystems",
+    ]
+  }
+
+  statement {
+    effect    = "Allow"
+    resources = ["*"]
+    actions = [
+      "elasticfilesystem:CreateAccessPoint",
+    ]
+
+    condition {
+      test     = "StringLike"
+      variable = "aws:RequestTag/efs.csi.aws.com/cluster"
+      values   = ["true"]
+    }
+  }
+
+
+  statement {
+    effect    = "Allow"
+    resources = ["*"]
+    actions = [
+      "elasticfilesystem:DeleteAccessPoint",
+    ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/efs.csi.aws.com/cluster"
+      values   = ["true"]
+    }
+  }
+}
+
+module "eks_efs_role" {
+  source  = "cloudposse/eks-iam-role/aws"
+  version = "0.10.0"
+
+  aws_account_number          = local.state["account_id"]
+  eks_cluster_oidc_issuer_url = module.eks_cluster.eks_cluster_identity_oidc_issuer
+
+  service_account_name      = "efs-csi-controller-sa"
+  service_account_namespace = "kube-system"
+  aws_iam_policy_document   = data.aws_iam_policy_document.efs_csi_driver.json
 }
