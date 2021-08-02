@@ -1,0 +1,4 @@
+bucket = "unwoven-state"
+dynamodb_table = "unwoven-state-lock"
+region = "eu-central-1"
+key = "aws-int"

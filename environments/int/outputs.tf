@@ -1,5 +1,5 @@
-output "state" {
-  value = local.state
+output "account" {
+  value = local.account
 }
 
 output "vpc" {

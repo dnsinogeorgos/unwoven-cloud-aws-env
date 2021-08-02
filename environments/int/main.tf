@@ -16,7 +16,7 @@ data "terraform_remote_state" "aws-org" {
 }
 
 locals {
-  state      = data.terraform_remote_state.aws-org.outputs.accounts["int"]
+  account    = data.terraform_remote_state.aws-org.outputs.accounts[var.namespace]
   cidr_block = cidrsubnet(module.vpc.vpc_cidr_block, 5, 0)
 }
 
@@ -24,7 +24,7 @@ module "vpc" {
   source  = "cloudposse/vpc/aws"
   version = "0.26.1"
 
-  cidr_block = local.state["cidr_block"]
+  cidr_block = local.account["cidr_block"]
 
   context = module.this.context
 }
@@ -59,11 +59,11 @@ module "efs" {
   security_group_enabled = true
   security_group_rules = [
     {
-      "type" : "ingress"
-      "from_port" : 0,
-      "to_port" : 0,
-      "protocol" : -1,
-      "cidr_blocks" : concat(
+      type : "ingress"
+      from_port : 0,
+      to_port : 0,
+      protocol : -1,
+      cidr_blocks : concat(
         module.subnets.private_subnet_cidrs,
         module.subnets.public_subnet_cidrs
       ),
@@ -91,9 +91,18 @@ module "eks_cluster" {
   endpoint_public_access  = true
   public_access_cidrs     = ["0.0.0.0/0"]
 
+  kube_data_auth_enabled          = false
+  kube_exec_auth_enabled          = true
+  kube_exec_auth_role_arn_enabled = true
+  kube_exec_auth_role_arn         = local.account["role_arn"]
+
+  // beware of dirty hax to disable and enable this
+  // https://registry.terraform.io/modules/cloudposse/eks-cluster/aws/latest
+  kubernetes_config_map_ignore_role_changes = true
+
   map_additional_iam_roles = [
     {
-      rolearn  = local.state["role_arn"],
+      rolearn  = local.account["role_arn"],
       username = "admin",
       groups = [
       "system:masters"]
@@ -175,7 +184,7 @@ module "eks_efs_role" {
   source  = "cloudposse/eks-iam-role/aws"
   version = "0.10.0"
 
-  aws_account_number          = local.state["account_id"]
+  aws_account_number          = local.account["account_id"]
   eks_cluster_oidc_issuer_url = module.eks_cluster.eks_cluster_identity_oidc_issuer
 
   service_account_name      = "efs-csi-controller-sa"
