@@ -125,7 +125,7 @@ module "eks_node_group_light" {
   cluster_name = module.eks_cluster.eks_cluster_id
   subnet_ids   = module.subnets.private_subnet_ids
 
-  instance_types = ["t3.small"]
+  instance_types = ["t3.medium"]
   disk_size      = "50"
   disk_type      = "gp3"
   desired_size   = "3"
@@ -190,4 +190,52 @@ module "eks_efs_role" {
   service_account_name      = "efs-csi-controller-sa"
   service_account_namespace = "kube-system"
   aws_iam_policy_document   = data.aws_iam_policy_document.efs_csi_driver.json
+}
+
+// TODO: MUST find a better solution, IAM role assumed by pod?
+// https://github.com/kubernetes-sigs/external-dns/blob/master/docs/tutorials/aws.md
+// https://artifacthub.io/packages/helm/bitnami/external-dns
+// TODO: MUST switch to pod assuming role
+// TODO: investigate best practices
+data "aws_iam_policy_document" "eks_route53" {
+  statement {
+    effect    = "Allow"
+    resources = ["arn:aws:route53:::hostedzone/*"]
+    actions = [
+      "route53:ChangeResourceRecordSets",
+    ]
+  }
+
+  statement {
+    effect    = "Allow"
+    resources = ["*"]
+    actions = [
+      "route53:ListHostedZones",
+      "route53:ListResourceRecordSets",
+    ]
+  }
+}
+
+//module "eks_route53_role" {
+//  source  = "cloudposse/eks-iam-role/aws"
+//  version = "0.10.0"
+//
+//  aws_account_number          = local.account["account_id"]
+//  eks_cluster_oidc_issuer_url = module.eks_cluster.eks_cluster_identity_oidc_issuer
+//
+//  service_account_name      = "external-dns"
+//  service_account_namespace = "external-dns"
+//  aws_iam_policy_document   = data.aws_iam_policy_document.eks_route53.json
+//}
+
+resource "aws_iam_policy" "eks_route53" {
+  name   = "eks_route53"
+  policy = data.aws_iam_policy_document.eks_route53.json
+}
+
+resource "aws_iam_role_policy_attachment" "eks_route53" {
+  for_each = toset([module.eks_node_group_light.eks_node_group_role_name])
+
+  policy_arn = aws_iam_policy.eks_route53.arn
+  role       = each.key
 }
