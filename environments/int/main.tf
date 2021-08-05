@@ -16,7 +16,7 @@ data "terraform_remote_state" "aws-org" {
 }
 
 locals {
-  account    = data.terraform_remote_state.aws-org.outputs.accounts[var.namespace]
+  account    = data.terraform_remote_state.aws-org.outputs.accounts[module.this.namespace]
   cidr_block = cidrsubnet(module.vpc.vpc_cidr_block, 5, 0)
 }
 
@@ -73,6 +73,10 @@ module "efs" {
   context = module.this.context
 }
 
+// This is tricky to work with, be sure to read about aws_auth
+// and kubernetes_config_map_ignore_role_changes
+// https://registry.terraform.io/modules/cloudposse/eks-cluster/aws/latest
+// TODO: implement users, roles and accounts. inherit from aws-org?
 module "eks_cluster" {
   source  = "cloudposse/eks-cluster/aws"
   version = "0.42.1"
@@ -96,8 +100,6 @@ module "eks_cluster" {
   kube_exec_auth_role_arn_enabled = true
   kube_exec_auth_role_arn         = local.account["role_arn"]
 
-  // beware of dirty hax to disable and enable this
-  // https://registry.terraform.io/modules/cloudposse/eks-cluster/aws/latest
   kubernetes_config_map_ignore_role_changes = true
 
   map_additional_iam_roles = [
@@ -128,11 +130,11 @@ module "eks_node_group_light" {
   instance_types = ["t3.medium"]
   disk_size      = "50"
   disk_type      = "gp3"
-  desired_size   = "3"
+  desired_size   = "1"
   min_size       = "1"
   max_size       = "6"
 
-  cluster_autoscaler_enabled        = true
+  cluster_autoscaler_enabled        = true // applies auto discovery tags
   worker_role_autoscale_iam_enabled = true
 
   context = module.this.context
@@ -140,102 +142,16 @@ module "eks_node_group_light" {
   module_depends_on = module.eks_cluster.kubernetes_config_map_id
 }
 
-data "aws_iam_policy_document" "efs_csi_driver" {
-  statement {
-    effect    = "Allow"
-    resources = ["*"]
-    actions = [
-      "elasticfilesystem:DescribeAccessPoints",
-      "elasticfilesystem:DescribeFileSystems",
-    ]
-  }
+module "service_accounts" {
+  source = "../../modules/service-accounts"
 
-  statement {
-    effect    = "Allow"
-    resources = ["*"]
-    actions = [
-      "elasticfilesystem:CreateAccessPoint",
-    ]
-
-    condition {
-      test     = "StringLike"
-      variable = "aws:RequestTag/efs.csi.aws.com/cluster"
-      values   = ["true"]
-    }
-  }
-
-
-  statement {
-    effect    = "Allow"
-    resources = ["*"]
-    actions = [
-      "elasticfilesystem:DeleteAccessPoint",
-    ]
-
-    condition {
-      test     = "StringEquals"
-      variable = "aws:ResourceTag/efs.csi.aws.com/cluster"
-      values   = ["true"]
-    }
-  }
-}
-
-module "eks_efs_role" {
-  source  = "cloudposse/eks-iam-role/aws"
-  version = "0.10.0"
-
-  aws_account_number          = local.account["account_id"]
+  aws_account_id              = local.account["account_id"]
+  eks_cluster_name            = module.eks_cluster.eks_cluster_id
   eks_cluster_oidc_issuer_url = module.eks_cluster.eks_cluster_identity_oidc_issuer
 
-  service_account_name      = "efs-csi-controller-sa"
-  service_account_namespace = "kube-system"
-  aws_iam_policy_document   = data.aws_iam_policy_document.efs_csi_driver.json
-}
+  //  cluster_autoscaler_enabled   = true
+  efs_csi_controller_enabled   = true
+  route53_external_dns_enabled = true
 
-// TODO: MUST find a better solution, IAM role assumed by pod?
-// https://github.com/kubernetes-sigs/external-dns/blob/master/docs/tutorials/aws.md
-// https://artifacthub.io/packages/helm/bitnami/external-dns
-// TODO: MUST switch to pod assuming role
-// TODO: investigate best practices
-data "aws_iam_policy_document" "eks_route53" {
-  statement {
-    effect    = "Allow"
-    resources = ["arn:aws:route53:::hostedzone/*"]
-    actions = [
-      "route53:ChangeResourceRecordSets",
-    ]
-  }
-
-  statement {
-    effect    = "Allow"
-    resources = ["*"]
-    actions = [
-      "route53:ListHostedZones",
-      "route53:ListResourceRecordSets",
-    ]
-  }
-}
-
-//module "eks_route53_role" {
-//  source  = "cloudposse/eks-iam-role/aws"
-//  version = "0.10.0"
-//
-//  aws_account_number          = local.account["account_id"]
-//  eks_cluster_oidc_issuer_url = module.eks_cluster.eks_cluster_identity_oidc_issuer
-//
-//  service_account_name      = "external-dns"
-//  service_account_namespace = "external-dns"
-//  aws_iam_policy_document   = data.aws_iam_policy_document.eks_route53.json
-//}
-
-resource "aws_iam_policy" "eks_route53" {
-  name   = "eks_route53"
-  policy = data.aws_iam_policy_document.eks_route53.json
-}
-
-resource "aws_iam_role_policy_attachment" "eks_route53" {
-  for_each = toset([module.eks_node_group_light.eks_node_group_role_name])
-
-  policy_arn = aws_iam_policy.eks_route53.arn
-  role       = each.key
+  context = module.this.context
 }
