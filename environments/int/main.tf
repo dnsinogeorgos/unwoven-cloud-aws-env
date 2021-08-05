@@ -134,8 +134,7 @@ module "eks_node_group_light" {
   min_size       = "1"
   max_size       = "6"
 
-  cluster_autoscaler_enabled        = true // applies auto discovery tags
-  worker_role_autoscale_iam_enabled = true
+  cluster_autoscaler_enabled = true
 
   context = module.this.context
 
@@ -146,11 +145,10 @@ module "service_accounts" {
   source = "../../modules/service-accounts"
 
   aws_account_id              = local.account["account_id"]
-  eks_cluster_name            = module.eks_cluster.eks_cluster_id
   eks_cluster_oidc_issuer_url = module.eks_cluster.eks_cluster_identity_oidc_issuer
 
-  //  cluster_autoscaler_enabled   = true
-  efs_csi_controller_enabled   = true
+  cluster_autoscaler_enabled   = true
+  efs_csi_driver_enabled       = true
   route53_external_dns_enabled = true
 
   context = module.this.context

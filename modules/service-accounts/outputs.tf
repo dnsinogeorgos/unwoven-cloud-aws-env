@@ -1,9 +1,9 @@
-//output "cluster_autoscaler_role" {
-//  value = module.efs_csi_controller_role
-//}
+output "cluster_autoscaler_role" {
+  value = module.cluster_autoscaler_role
+}
 
-output "efs_csi_controller_role" {
-  value = module.efs_csi_controller_role
+output "efs_csi_driver_role" {
+  value = module.efs_csi_driver_role
 }
 
 output "route53_external_dns_role" {

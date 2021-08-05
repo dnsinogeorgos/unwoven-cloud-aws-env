@@ -2,47 +2,40 @@ variable "aws_account_id" {
   type = string
 }
 
-variable "eks_cluster_name" {
-  type = string
-}
-
 variable "eks_cluster_oidc_issuer_url" {
   type = string
 }
 
-# cluster-autoscaler
-//variable "cluster_autoscaler_enabled" {
-//  type    = bool
-//  default = false
-//}
-//
-//variable "cluster_autoscaler_sa_name" {
-//  type    = string
-//  default = "cluster-autoscaler-sa"
-//}
-//
-//variable "cluster_autoscaler_namespace" {
-//  type    = string
-//  default = "cluster-autoscaler"
-//}
-
-# aws-efs-csi-driver
-variable "efs_csi_controller_enabled" {
+variable "cluster_autoscaler_enabled" {
   type    = bool
   default = false
 }
 
-variable "efs_csi_controller_sa_name" {
+variable "cluster_autoscaler_sa_name" {
   type    = string
-  default = "efs-csi-controller-sa"
+  default = "cluster-autoscaler-sa"
 }
 
-variable "efs_csi_controller_sa_namespace" {
+variable "cluster_autoscaler_namespace" {
   type    = string
-  default = "kube-system"
+  default = "cluster-autoscaler"
 }
 
-# external-dns
+variable "efs_csi_driver_enabled" {
+  type    = bool
+  default = false
+}
+
+variable "efs_csi_driver_sa_name" {
+  type    = string
+  default = "efs-csi-driver-sa"
+}
+
+variable "efs_csi_driver_sa_namespace" {
+  type    = string
+  default = "efs-csi-driver"
+}
+
 variable "route53_external_dns_enabled" {
   type    = bool
   default = false

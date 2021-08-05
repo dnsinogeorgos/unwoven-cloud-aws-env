@@ -29,17 +29,7 @@ output "eks_node_groups" {
   sensitive = true
 }
 
-//output "cluster_autoscaler_role" {
-//  value     = module.service_accounts.cluster_autoscaler_role
-//  sensitive = true
-//}
-
-output "efs_csi_controller_role" {
-  value     = module.service_accounts.efs_csi_controller_role
-  sensitive = true
-}
-
-output "route53_external_dns_role" {
-  value     = module.service_accounts.route53_external_dns_role
+output "service_accounts" {
+  value     = module.service_accounts
   sensitive = true
 }
