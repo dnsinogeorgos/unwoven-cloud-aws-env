@@ -2,6 +2,11 @@ output "account" {
   value = local.account
 }
 
+output "github" {
+  value     = local.github
+  sensitive = true
+}
+
 output "vpc" {
   value     = module.vpc
   sensitive = true
