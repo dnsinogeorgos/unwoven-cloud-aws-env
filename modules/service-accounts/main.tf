@@ -105,10 +105,47 @@ module "efs_csi_driver_role" {
   context = module.this.context
 }
 
+data "aws_iam_policy_document" "route53_cert_manager" {
+  statement {
+    effect    = "Allow"
+    resources = ["arn:aws:route53:::change/*"]
+    actions   = ["route53:GetChange"]
+  }
+
+  statement {
+    effect    = "Allow"
+    resources = ["arn:aws:route53:::hostedzone/${var.route53_cert_manager_zone_id}"]
+    actions = [
+      "route53:ChangeResourceRecordSets",
+      "route53:ListResourceRecordSets",
+    ]
+  }
+
+  statement {
+    effect    = "Allow"
+    resources = ["*"]
+    actions   = ["route53:ListHostedZonesByName"]
+  }
+}
+
+module "route53_cert_manager_role" {
+  source  = "cloudposse/eks-iam-role/aws"
+  version = "0.10.0"
+
+  enabled                     = var.route53_cert_manager_enabled && var.route53_zone_id != ""
+  aws_iam_policy_document     = data.aws_iam_policy_document.route53_cert_manager.json
+  aws_account_number          = var.aws_account_id
+  service_account_name        = var.route53_cert_manager_sa_name
+  service_account_namespace   = var.route53_cert_manager_sa_namespace
+  eks_cluster_oidc_issuer_url = var.eks_cluster_oidc_issuer_url
+
+  context = module.this.context
+}
+
 data "aws_iam_policy_document" "route53_external_dns" {
   statement {
     effect    = "Allow"
-    resources = ["arn:aws:route53:::hostedzone/*"]
+    resources = ["arn:aws:route53:::hostedzone/${var.route53_cert_manager_zone_id}"]
     actions = [
       "route53:ChangeResourceRecordSets",
     ]
@@ -128,7 +165,7 @@ module "route53_external_dns_role" {
   source  = "cloudposse/eks-iam-role/aws"
   version = "0.10.0"
 
-  enabled                     = var.route53_external_dns_enabled
+  enabled                     = var.route53_external_dns_enabled && var.route53_zone_id != ""
   aws_iam_policy_document     = data.aws_iam_policy_document.route53_external_dns.json
   aws_account_number          = var.aws_account_id
   service_account_name        = var.route53_external_dns_sa_name

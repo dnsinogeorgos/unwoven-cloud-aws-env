@@ -146,10 +146,12 @@ module "service_accounts" {
   source = "../../modules/service-accounts"
 
   aws_account_id              = local.account["account_id"]
+  route53_zone_id             = local.account["zone_id"]
   eks_cluster_oidc_issuer_url = module.eks_cluster.eks_cluster_identity_oidc_issuer
 
   cluster_autoscaler_enabled   = true
   efs_csi_driver_enabled       = true
+  route53_cert_manager_enabled = true
   route53_external_dns_enabled = true
 
   context = module.this.context
