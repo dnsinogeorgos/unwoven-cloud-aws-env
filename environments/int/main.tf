@@ -43,6 +43,9 @@ module "subnets" {
   nat_instance_enabled = true
   nat_instance_type    = "t3.nano"
 
+  private_subnets_additional_tags = { "kubernetes.io/role/internal-elb" = 1 }
+  public_subnets_additional_tags  = { "kubernetes.io/role/elb" = 1 }
+
   context = module.this.context
 }
 
