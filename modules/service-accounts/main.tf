@@ -114,7 +114,7 @@ data "aws_iam_policy_document" "route53_cert_manager" {
 
   statement {
     effect    = "Allow"
-    resources = ["arn:aws:route53:::hostedzone/${var.route53_cert_manager_zone_id}"]
+    resources = ["arn:aws:route53:::hostedzone/${var.route53_zone_id}"]
     actions = [
       "route53:ChangeResourceRecordSets",
       "route53:ListResourceRecordSets",
@@ -145,7 +145,7 @@ module "route53_cert_manager_role" {
 data "aws_iam_policy_document" "route53_external_dns" {
   statement {
     effect    = "Allow"
-    resources = ["arn:aws:route53:::hostedzone/${var.route53_cert_manager_zone_id}"]
+    resources = ["arn:aws:route53:::hostedzone/${var.route53_zone_id}"]
     actions = [
       "route53:ChangeResourceRecordSets",
     ]
