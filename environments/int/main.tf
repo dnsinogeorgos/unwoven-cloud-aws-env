@@ -134,8 +134,8 @@ module "eks_node_group_light" {
   instance_types = ["t3.medium"]
   disk_size      = "50"
   disk_type      = "gp3"
-  desired_size   = "1"
-  min_size       = "1"
+  desired_size   = "3"
+  min_size       = "3"
   max_size       = "6"
 
   cluster_autoscaler_enabled = true
