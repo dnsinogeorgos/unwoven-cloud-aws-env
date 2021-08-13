@@ -145,17 +145,106 @@ module "eks_node_group_light" {
   module_depends_on = module.eks_cluster.kubernetes_config_map_id
 }
 
-module "service_accounts" {
-  source = "../../modules/service-accounts"
+// Loki resources
+resource "random_string" "loki" {
+  length  = 6
+  lower   = true
+  upper   = true
+  number  = true
+  special = false
+}
 
-  aws_account_id              = local.account["account_id"]
-  route53_zone_id             = local.account["zone_id"]
-  eks_cluster_oidc_issuer_url = module.eks_cluster.eks_cluster_identity_oidc_issuer
+module "loki_bucket" {
+  source  = "cloudposse/s3-bucket/aws"
+  version = "0.42.0"
 
-  cluster_autoscaler_enabled   = true
-  efs_csi_driver_enabled       = true
-  route53_cert_manager_enabled = true
-  route53_external_dns_enabled = true
+  acl                          = "private"
+  allow_encrypted_uploads_only = true
+  allow_ssl_requests_only      = true
+  allowed_bucket_actions       = []
+  force_destroy                = true
+  lifecycle_rules = [
+    {
+      enabled = true,
+      prefix  = "",
 
-  context = module.this.context
+      abort_incomplete_multipart_upload_days = 30,
+
+      enable_standard_ia_transition    = true,
+      enable_glacier_transition        = true,
+      enable_deeparchive_transition    = true,
+      enable_current_object_expiration = true,
+
+      standard_transition_days    = 90,
+      glacier_transition_days     = 365,
+      deeparchive_transition_days = 1095,
+      expiration_days             = 3650,
+
+      noncurrent_version_glacier_transition_days     = 90,
+      noncurrent_version_deeparchive_transition_days = 365,
+      noncurrent_version_expiration_days             = 1095,
+
+      tags = {}
+    }
+  ]
+
+  user_enabled       = false
+  versioning_enabled = true
+
+  s3_replication_enabled = true
+  s3_replication_rules = [
+    {
+      id                 = module.loki_bucket_replication_target.bucket_id
+      status             = "Enabled"
+      destination_bucket = module.loki_bucket_replication_target.bucket_arn
+    }
+  ]
+
+  attributes = [random_string.loki.result, "loki", "main"]
+  context    = module.this.context
+}
+
+module "loki_bucket_replication_target" {
+  providers = {
+    aws = aws.dr
+  }
+
+  source  = "cloudposse/s3-bucket/aws"
+  version = "0.42.0"
+
+  acl                          = "private"
+  allow_encrypted_uploads_only = true
+  allow_ssl_requests_only      = true
+  allowed_bucket_actions       = []
+  force_destroy                = true
+  lifecycle_rules = [
+    {
+      enabled = true,
+      prefix  = "",
+
+      abort_incomplete_multipart_upload_days = 30,
+
+      enable_standard_ia_transition    = true,
+      enable_glacier_transition        = true,
+      enable_deeparchive_transition    = true,
+      enable_current_object_expiration = true,
+
+      standard_transition_days    = 90,
+      glacier_transition_days     = 365,
+      deeparchive_transition_days = 1095,
+      expiration_days             = 3650,
+
+      noncurrent_version_glacier_transition_days     = 90,
+      noncurrent_version_deeparchive_transition_days = 365,
+      noncurrent_version_expiration_days             = 1095,
+
+      tags = {}
+    }
+  ]
+
+  user_enabled       = false
+  versioning_enabled = true
+
+  attributes = [random_string.loki.result, "loki", "dr"]
+  context    = module.this.context
 }

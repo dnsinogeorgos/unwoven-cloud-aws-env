@@ -1,5 +1,6 @@
 # provider
-aws_region = "eu-central-1"
+aws_region    = "eu-central-1"
+aws_region_dr = "eu-west-3"
 
 # remote state
 aws-org_bucket = "unwoven-state"

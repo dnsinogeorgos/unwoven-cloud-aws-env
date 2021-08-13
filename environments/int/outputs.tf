@@ -34,7 +34,12 @@ output "eks_node_groups" {
   sensitive = true
 }
 
-output "service_accounts" {
-  value     = module.service_accounts
+output "loki_bucket" {
+  value     = module.loki_bucket
+  sensitive = true
+}
+
+output "loki_bucket_replication_target" {
+  value     = module.loki_bucket_replication_target
   sensitive = true
 }

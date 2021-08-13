@@ -3,6 +3,10 @@ variable "aws_region" {
   type = string
 }
 
+variable "aws_region_dr" {
+  type = string
+}
+
 # remote state
 variable "aws-org_bucket" {
   type = string
