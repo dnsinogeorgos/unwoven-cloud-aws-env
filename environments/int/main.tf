@@ -49,6 +49,75 @@ module "subnets" {
   context = module.this.context
 }
 
+// This is tricky to work with, be sure to read about aws_auth
+// and kubernetes_config_map_ignore_role_changes
+// https://registry.terraform.io/modules/cloudposse/eks-cluster/aws/latest
+// TODO: implement users, roles and accounts. inherit from aws-org?
+module "eks_cluster" {
+  source  = "cloudposse/eks-cluster/aws"
+  version = "0.42.1"
+
+  region     = var.aws_region
+  vpc_id     = module.vpc.vpc_id
+  subnet_ids = module.subnets.public_subnet_ids
+
+  cluster_encryption_config_enabled = true
+  cluster_log_retention_period      = 7
+  enabled_cluster_log_types         = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+
+  kubernetes_version      = "1.21"
+  oidc_provider_enabled   = true
+  endpoint_private_access = true
+  endpoint_public_access  = true
+  public_access_cidrs     = ["0.0.0.0/0"]
+
+  kube_data_auth_enabled          = false
+  kube_exec_auth_enabled          = true
+  kube_exec_auth_role_arn_enabled = true
+  kube_exec_auth_role_arn         = local.account["role_arn"]
+
+  kubernetes_config_map_ignore_role_changes = true
+
+  map_additional_iam_roles = [
+    {
+      rolearn  = local.account["role_arn"],
+      username = "admin",
+      groups = [
+      "system:masters"]
+    }
+  ]
+
+  context = module.this.context
+}
+
+// https://aws.amazon.com/blogs/compute/cost-optimization-and-resilience-eks-with-spot-instances/
+module "eks_node_group_light" {
+  source  = "cloudposse/eks-node-group/aws"
+  version = "0.24.0"
+
+  attributes = ["light"]
+  additional_tag_map = {
+    NodeClass = "light"
+    ExtraTag  = "light"
+  }
+
+  cluster_name = module.eks_cluster.eks_cluster_id
+  subnet_ids   = module.subnets.private_subnet_ids
+
+  instance_types = ["t3.medium"]
+  disk_size      = "50"
+  disk_type      = "gp3"
+  desired_size   = "3"
+  min_size       = "3"
+  max_size       = "6"
+
+  cluster_autoscaler_enabled = true
+
+  context = module.this.context
+
+  module_depends_on = module.eks_cluster.kubernetes_config_map_id
+}
+
 module "efs" {
   source  = "cloudposse/efs/aws"
   version = "0.31.0"
@@ -77,76 +146,7 @@ module "efs" {
   context = module.this.context
 }
 
-// This is tricky to work with, be sure to read about aws_auth
-// and kubernetes_config_map_ignore_role_changes
-// https://registry.terraform.io/modules/cloudposse/eks-cluster/aws/latest
-// TODO: implement users, roles and accounts. inherit from aws-org?
-module "eks_cluster" {
-  source  = "cloudposse/eks-cluster/aws"
-  version = "0.42.1"
-
-  region     = var.aws_region
-  vpc_id     = module.vpc.vpc_id
-  subnet_ids = module.subnets.public_subnet_ids
-
-  cluster_encryption_config_enabled = true
-  cluster_log_retention_period      = 0
-  enabled_cluster_log_types         = []
-
-  kubernetes_version      = "1.21"
-  oidc_provider_enabled   = true
-  endpoint_private_access = true
-  endpoint_public_access  = true
-  public_access_cidrs     = ["0.0.0.0/0"]
-
-  kube_data_auth_enabled          = false
-  kube_exec_auth_enabled          = true
-  kube_exec_auth_role_arn_enabled = true
-  kube_exec_auth_role_arn         = local.account["role_arn"]
-
-  kubernetes_config_map_ignore_role_changes = true
-
-  map_additional_iam_roles = [
-    {
-      rolearn  = local.account["role_arn"],
-      username = "admin",
-      groups = [
-      "system:masters"]
-    }
-  ]
-
-  context = module.this.context
-}
-
-module "eks_node_group_light" {
-  source  = "cloudposse/eks-node-group/aws"
-  version = "0.24.0"
-
-  attributes = ["light"]
-  additional_tag_map = {
-    NodeClass = "light"
-    ExtraTag  = "light"
-  }
-
-  cluster_name = module.eks_cluster.eks_cluster_id
-  subnet_ids   = module.subnets.private_subnet_ids
-
-  instance_types = ["t3.medium"]
-  disk_size      = "50"
-  disk_type      = "gp3"
-  desired_size   = "3"
-  min_size       = "3"
-  max_size       = "6"
-
-  cluster_autoscaler_enabled = true
-
-  context = module.this.context
-
-  module_depends_on = module.eks_cluster.kubernetes_config_map_id
-}
-
-// Loki resources
-resource "random_string" "loki" {
+resource "random_string" "loki_bucket" {
   length  = 6
   lower   = true
   upper   = true
@@ -200,7 +200,7 @@ module "loki_bucket" {
     }
   ]
 
-  attributes = [random_string.loki.result, "loki", "main"]
+  attributes = [random_string.loki_bucket.result, "loki", "main"]
   context    = module.this.context
 }
 
@@ -245,6 +245,6 @@ module "loki_bucket_replication_target" {
   user_enabled       = false
   versioning_enabled = true
 
-  attributes = [random_string.loki.result, "loki", "dr"]
+  attributes = [random_string.loki_bucket.result, "loki", "dr"]
   context    = module.this.context
 }
