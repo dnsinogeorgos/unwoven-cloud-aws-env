@@ -44,3 +44,8 @@ output "buckets_thanos" {
   value     = module.buckets_thanos.buckets
   sensitive = true
 }
+
+output "loki_tenant_ids" {
+  value     = local.loki_tenant_ids
+  sensitive = true
+}

@@ -19,6 +19,9 @@ locals {
   account    = data.terraform_remote_state.aws-org.outputs.accounts[module.this.namespace]
   github     = data.terraform_remote_state.aws-org.outputs.github
   cidr_block = cidrsubnet(module.vpc.vpc_cidr_block, 5, 0)
+  loki_tenant_ids = {
+    for _, acc in data.terraform_remote_state.aws-org.outputs.accounts : acc["name"] => acc["account_id"]
+  }
 }
 
 module "vpc" {
