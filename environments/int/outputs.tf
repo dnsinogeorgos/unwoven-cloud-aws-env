@@ -2,11 +2,6 @@ output "account" {
   value = local.account
 }
 
-output "github" {
-  value     = local.github
-  sensitive = true
-}
-
 output "vpc" {
   value     = module.vpc
   sensitive = true
@@ -29,17 +24,18 @@ output "eks_cluster" {
 
 output "eks_node_groups" {
   value = {
-    light = module.eks_node_group_light
+    amd64 = module.eks_node_group_amd64_gp
+    //    arm64 = module.eks_node_group_arm64_gp
   }
   sensitive = true
 }
 
-output "loki_bucket" {
-  value     = module.loki_bucket
+output "buckets_loki" {
+  value     = module.buckets_loki.buckets
   sensitive = true
 }
 
-output "loki_bucket_replication_target" {
-  value     = module.loki_bucket_replication_target
+output "buckets_thanos" {
+  value     = module.buckets_thanos.buckets
   sensitive = true
 }

@@ -49,75 +49,6 @@ module "subnets" {
   context = module.this.context
 }
 
-// This is tricky to work with, be sure to read about aws_auth
-// and kubernetes_config_map_ignore_role_changes
-// https://registry.terraform.io/modules/cloudposse/eks-cluster/aws/latest
-// TODO: implement users, roles and accounts. inherit from aws-org?
-module "eks_cluster" {
-  source  = "cloudposse/eks-cluster/aws"
-  version = "0.42.1"
-
-  region     = var.aws_region
-  vpc_id     = module.vpc.vpc_id
-  subnet_ids = module.subnets.public_subnet_ids
-
-  cluster_encryption_config_enabled = true
-  cluster_log_retention_period      = 7
-  enabled_cluster_log_types         = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
-
-  kubernetes_version      = "1.21"
-  oidc_provider_enabled   = true
-  endpoint_private_access = true
-  endpoint_public_access  = true
-  public_access_cidrs     = ["0.0.0.0/0"]
-
-  kube_data_auth_enabled          = false
-  kube_exec_auth_enabled          = true
-  kube_exec_auth_role_arn_enabled = true
-  kube_exec_auth_role_arn         = local.account["role_arn"]
-
-  kubernetes_config_map_ignore_role_changes = true
-
-  map_additional_iam_roles = [
-    {
-      rolearn  = local.account["role_arn"],
-      username = "admin",
-      groups = [
-      "system:masters"]
-    }
-  ]
-
-  context = module.this.context
-}
-
-// https://aws.amazon.com/blogs/compute/cost-optimization-and-resilience-eks-with-spot-instances/
-module "eks_node_group_light" {
-  source  = "cloudposse/eks-node-group/aws"
-  version = "0.24.0"
-
-  attributes = ["light"]
-  additional_tag_map = {
-    NodeClass = "light"
-    ExtraTag  = "light"
-  }
-
-  cluster_name = module.eks_cluster.eks_cluster_id
-  subnet_ids   = module.subnets.private_subnet_ids
-
-  instance_types = ["t3.medium"]
-  disk_size      = "50"
-  disk_type      = "gp3"
-  desired_size   = "3"
-  min_size       = "3"
-  max_size       = "6"
-
-  cluster_autoscaler_enabled = true
-
-  context = module.this.context
-
-  module_depends_on = module.eks_cluster.kubernetes_config_map_id
-}
-
 module "efs" {
   source  = "cloudposse/efs/aws"
   version = "0.31.0"
@@ -146,105 +77,139 @@ module "efs" {
   context = module.this.context
 }
 
-resource "random_string" "loki_bucket" {
+// TODO: implement users, roles and accounts. inherit from aws-org?
+module "eks_cluster" {
+  source  = "cloudposse/eks-cluster/aws"
+  version = "0.42.1"
+
+  region     = var.aws_region
+  vpc_id     = module.vpc.vpc_id
+  subnet_ids = module.subnets.public_subnet_ids
+
+  cluster_encryption_config_enabled = true
+  cluster_log_retention_period      = 7
+  enabled_cluster_log_types         = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+
+  kubernetes_version      = "1.21"
+  oidc_provider_enabled   = true
+  endpoint_private_access = true
+  endpoint_public_access  = true
+  public_access_cidrs     = ["0.0.0.0/0"]
+
+  kube_data_auth_enabled          = false
+  kube_exec_auth_enabled          = true
+  kube_exec_auth_role_arn_enabled = true
+  kube_exec_auth_role_arn         = local.account["role_arn"]
+
+  // Changing the config map after deployment requires a tricky workaround
+  // https://registry.terraform.io/modules/cloudposse/eks-cluster/aws/latest
+  //
+  // To change the configmap after deployment, the following must be
+  // disabled, changes must be planned and state moved as below.
+  // terraform state mv 'module.eks_cluster.kubernetes_config_map.aws_auth_ignore_changes[0]' 'module.eks_cluster.kubernetes_config_map.aws_auth[0]'
+  // Same for enabling again from disabled
+  kubernetes_config_map_ignore_role_changes = true
+
+  map_additional_iam_roles = [
+    {
+      rolearn  = local.account["role_arn"],
+      username = "admin",
+      groups = [
+      "system:masters"]
+    }
+  ]
+
+  context = module.this.context
+}
+
+// https://aws.amazon.com/blogs/compute/cost-optimization-and-resilience-eks-with-spot-instances/
+module "eks_node_group_amd64_gp" {
+  source  = "cloudposse/eks-node-group/aws"
+  version = "0.24.0"
+
+  attributes = ["amd64"]
+  additional_tag_map = {
+    NodeClass = "amd64"
+    ExtraTag  = "amd64"
+  }
+
+  cluster_name = module.eks_cluster.eks_cluster_id
+  subnet_ids   = module.subnets.private_subnet_ids
+
+  ami_type       = "AL2_x86_64"
+  instance_types = ["t3.medium"]
+  disk_size      = "50"
+  disk_type      = "gp3"
+  min_size       = "3"
+  desired_size   = "3"
+  max_size       = "6"
+
+  cluster_autoscaler_enabled = true
+
+  context = module.this.context
+
+  module_depends_on = module.eks_cluster.kubernetes_config_map_id
+}
+
+//module "eks_node_group_arm64_gp" {
+//  source  = "cloudposse/eks-node-group/aws"
+//  version = "0.24.0"
+//
+//  attributes = ["arm64"]
+//  additional_tag_map = {
+//    NodeClass = "arm64"
+//    ExtraTag  = "arm64"
+//  }
+//
+//  cluster_name = module.eks_cluster.eks_cluster_id
+//  subnet_ids   = module.subnets.private_subnet_ids
+//
+//  ami_type       = "AL2_ARM_64"
+//  instance_types = ["t4g.medium"]
+//  disk_size      = "50"
+//  disk_type      = "gp3"
+//  min_size       = "3"
+//  desired_size   = "3"
+//  max_size       = "6"
+//
+//  cluster_autoscaler_enabled = true
+//
+//  context = module.this.context
+//
+//  module_depends_on = module.eks_cluster.kubernetes_config_map_id
+//}
+
+// S3 resources
+resource "random_string" "bucket" {
   length  = 6
   lower   = true
-  upper   = true
+  upper   = false
   number  = true
   special = false
 }
 
-module "loki_bucket" {
-  source  = "cloudposse/s3-bucket/aws"
-  version = "0.42.0"
-
-  acl                          = "private"
-  allow_encrypted_uploads_only = true
-  allow_ssl_requests_only      = true
-  allowed_bucket_actions       = []
-  force_destroy                = true
-  lifecycle_rules = [
-    {
-      enabled = true,
-      prefix  = "",
-
-      abort_incomplete_multipart_upload_days = 30,
-
-      enable_standard_ia_transition    = true,
-      enable_glacier_transition        = true,
-      enable_deeparchive_transition    = true,
-      enable_current_object_expiration = true,
-
-      standard_transition_days    = 90,
-      glacier_transition_days     = 365,
-      deeparchive_transition_days = 1095,
-      expiration_days             = 3650,
-
-      noncurrent_version_glacier_transition_days     = 90,
-      noncurrent_version_deeparchive_transition_days = 365,
-      noncurrent_version_expiration_days             = 1095,
-
-      tags = {}
-    }
-  ]
-
-  user_enabled       = false
-  versioning_enabled = true
-
-  s3_replication_enabled = true
-  s3_replication_rules = [
-    {
-      id                 = module.loki_bucket_replication_target.bucket_id
-      status             = "Enabled"
-      destination_bucket = module.loki_bucket_replication_target.bucket_arn
-    }
-  ]
-
-  attributes = [random_string.loki_bucket.result, "loki", "main"]
-  context    = module.this.context
-}
-
-module "loki_bucket_replication_target" {
+module "buckets_loki" {
   providers = {
-    aws = aws.dr
+    aws.main = aws
+    aws.dr   = aws.dr
   }
 
-  source  = "cloudposse/s3-bucket/aws"
-  version = "0.42.0"
+  source = "../../modules/replicated-s3-bucket"
 
-  acl                          = "private"
-  allow_encrypted_uploads_only = true
-  allow_ssl_requests_only      = true
-  allowed_bucket_actions       = []
-  force_destroy                = true
-  lifecycle_rules = [
-    {
-      enabled = true,
-      prefix  = "",
+  attributes = [random_string.bucket.result, "loki"]
 
-      abort_incomplete_multipart_upload_days = 30,
+  context = module.this.context
+}
 
-      enable_standard_ia_transition    = true,
-      enable_glacier_transition        = true,
-      enable_deeparchive_transition    = true,
-      enable_current_object_expiration = true,
+module "buckets_thanos" {
+  providers = {
+    aws.main = aws
+    aws.dr   = aws.dr
+  }
 
-      standard_transition_days    = 90,
-      glacier_transition_days     = 365,
-      deeparchive_transition_days = 1095,
-      expiration_days             = 3650,
+  source = "../../modules/replicated-s3-bucket"
 
-      noncurrent_version_glacier_transition_days     = 90,
-      noncurrent_version_deeparchive_transition_days = 365,
-      noncurrent_version_expiration_days             = 1095,
+  attributes = [random_string.bucket.result, "thanos"]
 
-      tags = {}
-    }
-  ]
-
-  user_enabled       = false
-  versioning_enabled = true
-
-  attributes = [random_string.loki_bucket.result, "loki", "dr"]
-  context    = module.this.context
+  context = module.this.context
 }
