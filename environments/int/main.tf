@@ -165,7 +165,7 @@ module "eks_node_group_amd64_gp" {
   subnet_ids   = module.subnets.private_subnet_ids
 
   ami_type       = "AL2_x86_64"
-  instance_types = ["t3.medium"]
+  instance_types = ["t3.large"]
   disk_size      = "50"
   disk_type      = "gp3"
   min_size       = "3"
@@ -193,7 +193,7 @@ module "eks_node_group_amd64_gp" {
 //  subnet_ids   = module.subnets.private_subnet_ids
 //
 //  ami_type       = "AL2_ARM_64"
-//  instance_types = ["t4g.medium"]
+//  instance_types = ["t4g.large"]
 //  disk_size      = "50"
 //  disk_type      = "gp3"
 //  min_size       = "3"
