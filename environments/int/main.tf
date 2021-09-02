@@ -125,26 +125,30 @@ module "eks_cluster" {
   context = module.this.context
 }
 
-resource "aws_eks_addon" "vpc_cni" {
-  cluster_name      = module.eks_cluster.eks_cluster_id
-  resolve_conflicts = "OVERWRITE"
-  addon_name        = "vpc-cni"
-  addon_version     = "v1.9.0-eksbuild.1"
-}
+//resource "aws_eks_addon" "coredns" {
+//  cluster_name      = module.eks_cluster.eks_cluster_id
+//  resolve_conflicts = "OVERWRITE"
+//  addon_name        = "coredns"
+//  addon_version     = "v1.8.4-eksbuild.1"
+//}
 
-resource "aws_eks_addon" "coredns" {
-  cluster_name      = module.eks_cluster.eks_cluster_id
-  resolve_conflicts = "OVERWRITE"
-  addon_name        = "coredns"
-  addon_version     = "v1.8.4-eksbuild.1"
-}
+//resource "aws_eks_addon" "vpc_cni" {
+//  cluster_name      = module.eks_cluster.eks_cluster_id
+//  resolve_conflicts = "OVERWRITE"
+//  addon_name        = "vpc-cni"
+//  addon_version     = "v1.9.0-eksbuild.1"
+//
+//  depends_on = [aws_eks_addon.coredns]
+//}
 
-resource "aws_eks_addon" "kube_proxy" {
-  cluster_name      = module.eks_cluster.eks_cluster_id
-  resolve_conflicts = "OVERWRITE"
-  addon_name        = "kube-proxy"
-  addon_version     = "v1.21.2-eksbuild.2"
-}
+//resource "aws_eks_addon" "kube_proxy" {
+//  cluster_name      = module.eks_cluster.eks_cluster_id
+//  resolve_conflicts = "OVERWRITE"
+//  addon_name        = "kube-proxy"
+//  addon_version     = "v1.21.2-eksbuild.2"
+//
+//  depends_on = [aws_eks_addon.vpc_cni]
+//}
 
 // https://aws.amazon.com/blogs/compute/cost-optimization-and-resilience-eks-with-spot-instances/
 module "eks_node_group_amd64_gp" {
